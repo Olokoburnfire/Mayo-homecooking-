@@ -65,14 +65,18 @@ const createUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { error } = validate(req.body);
+    const { error } = validatePassword(req.body);
     if (error) return errorMsg(res, error.details[0].message, 400);
 
-    let user = await User.findOne({ email: req.body.email });
-    if (!user) return errorMsg(res, "Invalid email or password.", 400);
+    const user = await User.findOne({
+      email: req.body.email,
+    });
 
-    if (user.status !== "active")
-      return errorMsg(res, "User account is not active.", 400);
+    if (!user.verified) {
+      return errorMsg(res, "Please verify your email address.", 400);
+    }
+
+    if (!user) return errorMsg(res, "Invalid email or password.", 400);
 
     const validPassword = await bcrypt.compare(
       req.body.password,
@@ -80,26 +84,11 @@ const loginUser = async (req, res) => {
     );
     if (!validPassword) return errorMsg(res, "Invalid email or password.", 400);
 
-    if (!user.verified) {
-      const verifyToken = await new Token({
-        userId: user._id,
-        token: crypto.randomBytes(32).toString("hex"),
-      }).save();
-
-      const url = `${process.env.BASE_URL}/user/${user._id}/verify/${verifyToken.token}`;
-
-      await sendEmail(user.email, "Verify your email address", url);
-
-      return errorMsg(res, "Please verify your email address to login.", 400);
-    }
-
     const token = generateToken(user);
-    successMsg(
-      res,
-      "User logged in successfully.",
-      { user: _.pick(user, ["_id", "name", "email"]), token },
-      200
-    );
+    successMsg(res, {
+      user: _.pick(user, ["_id", "name", "email"]),
+      token,
+    });
   } catch (error) {
     errorMsg(res, error.message, 500);
   }
@@ -282,9 +271,53 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// @desc  Update user profile
+// @route PUT /api/users/update-profile
+// @access Private
+const updateProfile = async (req, res) => {
+  try {
+    const { error } = validateProfile(req.body);
+
+    if (error) return errorMsg(res, error.details[0].message, 400);
+
+    const user = await User.findById(req.user._id);
+
+    user.name = req.body.name;
+    user.email = req.body.email;
+
+    await user.save();
+
+    successMsg(res, "Profile updated successfully.", null, 200);
+  } catch (error) {
+    errorMsg(res, error.message, 500);
+  }
+};
+
+// @desc  Delete user
+// @route DELETE /api/users/delete
+// @access Private
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.user._id);
+
+    successMsg(res, "User deleted successfully.", null, 200);
+  } catch (error) {
+    errorMsg(res, error.message, 500);
+  }
+};
+
 const validatePassword = (user) => {
   const schema = Joi.object({
     password: Joi.string().min(6).max(255).required(),
+  });
+
+  return schema.validate(user);
+};
+
+const validateProfile = (user) => {
+  const schema = Joi.object({
+    name: Joi.string().min(3).max(255).required(),
+    email: Joi.string().min(6).max(255).required().email(),
   });
 
   return schema.validate(user);
@@ -298,4 +331,6 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updatePassword,
+  updateProfile,
+  deleteUser,
 };

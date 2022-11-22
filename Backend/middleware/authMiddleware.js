@@ -34,4 +34,14 @@ const admin = (req, res, next) => {
   }
 };
 
-module.exports = { protect, admin };
+const verify = (req, res, next) => {
+  if (req.user && req.user.verified) {
+    next();
+  } else {
+    return res
+      .status(401)
+      .json({ message: "Not authorized as a verified user" });
+  }
+};
+
+module.exports = { protect, admin, verify };
