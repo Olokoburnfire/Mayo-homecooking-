@@ -65,7 +65,7 @@ const createUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { error } = validatePassword(req.body);
+    const { error } = validateLogin(req.body);
     if (error) return errorMsg(res, error.details[0].message, 400);
 
     const user = await User.findOne({
@@ -85,10 +85,17 @@ const loginUser = async (req, res) => {
     if (!validPassword) return errorMsg(res, "Invalid email or password.", 400);
 
     const token = generateToken(user);
-    successMsg(res, {
-      user: _.pick(user, ["_id", "name", "email"]),
-      token,
-    });
+    res
+      .header("x-auth-token", token)
+      .status(200)
+      .json({
+        success: true,
+        message: "Login successful",
+        data: {
+          user: _.pick(user, ["_id", "name", "email"]),
+          token,
+        },
+      });
   } catch (error) {
     errorMsg(res, error.message, 500);
   }
@@ -100,8 +107,6 @@ const loginUser = async (req, res) => {
 const verifyEmail = async (req, res) => {
   try {
     const { id, token } = req.params;
-
-    console.log(id, token, req.params);
 
     const user = await User.findById(id);
     if (!user) return errorMsg(res, "User not found.", 404);
@@ -318,6 +323,15 @@ const validateProfile = (user) => {
   const schema = Joi.object({
     name: Joi.string().min(3).max(255).required(),
     email: Joi.string().min(6).max(255).required().email(),
+  });
+
+  return schema.validate(user);
+};
+
+const validateLogin = (user) => {
+  const schema = Joi.object({
+    email: Joi.string().min(6).max(255).required().email(),
+    password: Joi.string().min(6).max(255).required(),
   });
 
   return schema.validate(user);
