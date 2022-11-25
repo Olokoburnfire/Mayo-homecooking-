@@ -1,6 +1,7 @@
-import { Category, validate } from "../models/categoryModel";
-import { cloudinary } from "../config/cloudinaryConfig";
-import { errorMsg, successMsg } from "../utils/response";
+const { Category, validate } = require("../models/categoryModel");
+const { Meal } = require("../models/mealModel");
+const { cloudinary } = require("../config/cloudinaryConfig");
+const { errorMsg, successMsg } = require("../utils/response");
 
 // desc   Create new Category
 // route  POST /api/categories
@@ -8,6 +9,7 @@ import { errorMsg, successMsg } from "../utils/response";
 const createCategory = async (req, res) => {
   try {
     let { name, description, status } = req.body;
+    if (!req.files) return res.send("Please upload an image");
     let { image } = req.files;
 
     const fileTypes = ["image/jpeg", "image/jpg", "image/png"];
@@ -24,6 +26,8 @@ const createCategory = async (req, res) => {
     const cloudFile = await cloudinary.uploader.upload(image.tempFilePath, {
       folder: "categories",
     });
+
+    console.log(cloudFile);
 
     const { error } = validate(req.body);
     if (error) return errorMsg(res, error.details[0].message, 400);
@@ -55,7 +59,27 @@ const getCategories = async (req, res) => {
   }
 };
 
+// desc  Get meals by category
+// route  GET /api/categories/:category
+// access Public
+const getMealsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const categoryExists = await Category.findOne({ name: category });
+    if (!categoryExists) return errorMsg(res, "Category not found.", 404);
+
+    const meals = await Meal.find({
+      category: categoryExists.name,
+    });
+
+    successMsg(res, "Meals fetched successfully.", meals);
+  } catch (error) {
+    errorMsg(res, error.message, 500);
+  }
+};
+
 module.exports = {
   createCategory,
   getCategories,
+  getMealsByCategory,
 };
