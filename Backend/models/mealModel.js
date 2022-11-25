@@ -6,7 +6,7 @@ const mealSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      minlength: 5,
+      minlength: 3,
       maxlength: 30,
     },
     description: {
@@ -26,10 +26,11 @@ const mealSchema = new mongoose.Schema(
       required: true,
     },
     category: {
-      type: String,
+      // cast category to string
+
+      type: mongoose.Schema.Types.Mixed,
+      ref: "Category",
       required: true,
-      minlength: 5,
-      maxlength: 30,
     },
     status: {
       type: String,
@@ -44,6 +45,18 @@ const mealSchema = new mongoose.Schema(
 
 const Meal = mongoose.model("Meal", mealSchema);
 
-const schema = Joi.object({
-  name: Joi.string().min(5).max(30).required(),
-});
+const validate = (meal) => {
+  const schema = Joi.object({
+    name: Joi.string().min(3).max(30).required(),
+    description: Joi.string().min(5).max(255).required(),
+    price: Joi.number().min(0).max(1000).required(),
+    status: Joi.string().required(),
+  });
+
+  return schema.validate(meal);
+};
+
+module.exports = {
+  Meal,
+  validate,
+};
