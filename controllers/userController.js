@@ -29,14 +29,18 @@ const createUser = async (req, res) => {
       token: Math.floor(100000 + Math.random() * 900000),
     }).save();
 
+    console.log("verifyToken");
+
     const url = `${process.env.BASE_URL}/user/verify/${user._id}/${verifyToken.token}`;
+
+    console.log("url");
 
     await sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: user.email,
       from: {
-        email: process.env.USER,
-        name: process.env.NAME,
+        email: "basitolaitan27@gmail.com",
+        name: "Mayo Home Cooking",
       },
       subject: "Verify your email address",
       text: `Please verify your email address by clicking the link below:
@@ -45,6 +49,8 @@ const createUser = async (req, res) => {
       here is your link: ${url}</strong>`,
     };
     await sgMail.send(msg);
+
+    console.log("Email sent");
 
     const token = generateToken(user);
     successMsg(
