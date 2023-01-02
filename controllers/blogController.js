@@ -68,11 +68,11 @@ const getAllBlogs = async (req, res) => {
 // access Public
 const getSingleBlog = async (req, res) => {
   try {
-    const blog = await Blog.findById(req.params.id).populate("user", "name");
+    const blog = await Blog.findById(req.params.id);
 
     if (!blog) return errorMsg(res, "Blog not found.", 404);
 
-    successMsg(res, "Blog found.", blog, 200);
+    successMsg(res, "Single blog.", blog, 200);
   } catch (error) {
     errorMsg(res, error.message, 500);
   }
